@@ -193,8 +193,7 @@ class SudokuGame {
         } else {
             this.score += 10;
             document.getElementById('score-display').innerText = this.score;
-            // Clear memos for this cell and related row/col/box if correct? 
-            // (Common in modern apps)
+            this.checkSectionCompletion(this.selectedIndex);
         }
 
         this.renderGrid();
@@ -221,9 +220,49 @@ class SudokuGame {
         this.stats.streak = Math.max(this.stats.streak, this.stats.currentStreak);
         this.saveStats();
 
-        document.getElementById('message-title').innerText = "素晴らしい！";
-        document.getElementById('message-text').innerText = `スコア: ${this.score} | タイム: ${document.getElementById('timer').innerText}`;
-        document.getElementById('message-overlay').classList.remove('hidden');
+        // Trigger final completion effect for the whole grid
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach((cell, i) => {
+            setTimeout(() => cell.classList.add('completed-effect'), i * 10);
+        });
+
+        setTimeout(() => {
+            document.getElementById('message-title').innerText = "素晴らしい！";
+            document.getElementById('message-text').innerText = `スコア: ${this.score} | タイム: ${document.getElementById('timer').innerText}`;
+            document.getElementById('message-overlay').classList.remove('hidden');
+        }, 1500);
+    }
+
+    checkSectionCompletion(index) {
+        const row = Math.floor(index / 9);
+        const col = index % 9;
+        const boxRow = Math.floor(row / 3) * 3;
+        const boxCol = Math.floor(col / 3) * 3;
+
+        const cells = document.querySelectorAll('.cell');
+        const triggerEffect = (indices) => {
+            indices.forEach(idx => {
+                cells[idx].classList.remove('completed-effect');
+                void cells[idx].offsetWidth; // trigger reflow
+                cells[idx].classList.add('completed-effect');
+                setTimeout(() => cells[idx].classList.remove('completed-effect'), 1000);
+            });
+        };
+
+        // Row
+        const rowIndices = Array.from({ length: 9 }, (_, i) => row * 9 + i);
+        if (rowIndices.every(idx => this.grid[idx] === this.solution[idx])) triggerEffect(rowIndices);
+
+        // Column
+        const colIndices = Array.from({ length: 9 }, (_, i) => i * 9 + col);
+        if (colIndices.every(idx => this.grid[idx] === this.solution[idx])) triggerEffect(colIndices);
+
+        // Box
+        const boxIndices = [];
+        for (let i = 0; i < 9; i++) {
+            boxIndices.push((boxRow + Math.floor(i / 3)) * 9 + (boxCol + i % 3));
+        }
+        if (boxIndices.every(idx => this.grid[idx] === this.solution[idx])) triggerEffect(boxIndices);
     }
 
     gameOver() {

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>らくらく数独 - シニア向け</title>
+    <!-- iOS Web App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="らくらく数独">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <h1>らくらく数独</h1>
+            <div class="controls-top">
+                <button id="new-game-btn" class="secondary-btn">新しく始める</button>
+                <div id="timer" class="timer">00:00</div>
+            </div>
+        </header>
+
+        <main>
+            <div id="sudoku-grid" class="sudoku-grid">
+                <!-- 盤面はJSで生成 -->
+            </div>
+
+            <div class="input-section">
+                <div class="number-pad">
+                    <button class="num-btn" data-value="1">1</button>
+                    <button class="num-btn" data-value="2">2</button>
+                    <button class="num-btn" data-value="3">3</button>
+                    <button class="num-btn" data-value="4">4</button>
+                    <button class="num-btn" data-value="5">5</button>
+                    <button class="num-btn" data-value="6">6</button>
+                    <button class="num-btn" data-value="7">7</button>
+                    <button class="num-btn" data-value="8">8</button>
+                    <button class="num-btn" data-value="9">9</button>
+                    <button class="num-btn erase-btn" data-value="0">消す</button>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="undo-btn" class="action-btn">戻る</button>
+                    <button id="hint-btn" class="action-btn">ヒント</button>
+                </div>
+            </div>
+        </main>
+
+        <div id="message-overlay" class="overlay hidden">
+            <div class="message-box">
+                <h2 id="message-title">おめでとうございます！</h2>
+                <p id="message-text">素晴らしいです。もう一度遊びますか？</p>
+                <button id="restart-btn" class="primary-btn">次へ進む</button>
+            </div>
+        </div>
+    </div>
+    <script src="main.js"></script>
+</body>
+
+</html>

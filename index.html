@@ -4,21 +4,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>らくらく数独 - シニア向け</title>
-    <!-- iOS Web App Meta Tags -->
+    <title>らくらく数独 v2</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="らくらく数独">
     <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
 <body>
     <div class="app-container">
         <header>
-            <h1>らくらく数独</h1>
-            <div class="controls-top">
-                <button id="new-game-btn" class="secondary-btn">新しく始める</button>
-                <div id="timer" class="timer">00:00</div>
+            <div class="top-nav">
+                <button id="stats-open-btn" class="icon-btn"><i class="fas fa-chart-bar"></i></button>
+                <h1>らくらく数独</h1>
+                <button id="settings-btn" class="icon-btn"><i class="fas fa-cog"></i></button>
+            </div>
+
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="label">難易度</span>
+                    <span id="difficulty-display" class="value">初級</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">ミス</span>
+                    <span id="mistakes-display" class="value">0/3</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">スコア</span>
+                    <span id="score-display" class="value">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">タイム</span>
+                    <span id="timer" class="value">00:00</span>
+                </div>
             </div>
         </header>
 
@@ -27,7 +47,29 @@
                 <!-- 盤面はJSで生成 -->
             </div>
 
-            <div class="input-section">
+            <div class="controls-section">
+                <div class="action-bar">
+                    <button id="undo-btn" class="tool-btn">
+                        <i class="fas fa-undo"></i>
+                        <span>元に戻す</span>
+                    </button>
+                    <button id="erase-btn" class="tool-btn">
+                        <i class="fas fa-eraser"></i>
+                        <span>消す</span>
+                    </button>
+                    <button id="memo-btn" class="tool-btn">
+                        <div class="memo-toggle-container">
+                            <i class="fas fa-pencil-alt"></i>
+                            <span id="memo-status" class="toggle-badge">OFF</span>
+                        </div>
+                        <span>メモ</span>
+                    </button>
+                    <button id="hint-btn" class="tool-btn">
+                        <i class="fas fa-lightbulb"></i>
+                        <span>ヒント</span>
+                    </button>
+                </div>
+
                 <div class="number-pad">
                     <button class="num-btn" data-value="1">1</button>
                     <button class="num-btn" data-value="2">2</button>
@@ -38,21 +80,63 @@
                     <button class="num-btn" data-value="7">7</button>
                     <button class="num-btn" data-value="8">8</button>
                     <button class="num-btn" data-value="9">9</button>
-                    <button class="num-btn erase-btn" data-value="0">消す</button>
                 </div>
 
-                <div class="action-buttons">
-                    <button id="undo-btn" class="action-btn">戻る</button>
-                    <button id="hint-btn" class="action-btn">ヒント</button>
-                </div>
+                <button id="new-game-btn" class="primary-btn">新しいゲーム</button>
             </div>
         </main>
 
+        <!-- Modals -->
+        <div id="stats-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>統計</h2>
+                    <button class="close-btn">&times;</button>
+                </div>
+                <div class="stats-grid">
+                    <div class="stats-card">
+                        <i class="fas fa-trophy highlight"></i>
+                        <span class="stats-label">クリア数</span>
+                        <span id="stats-cleared" class="stats-value">0</span>
+                    </div>
+                    <div class="stats-card">
+                        <i class="fas fa-star highlight"></i>
+                        <span class="stats-label">ベストスコア</span>
+                        <span id="stats-best-score" class="stats-value">0</span>
+                    </div>
+                    <div class="stats-card">
+                        <i class="fas fa-check-circle highlight"></i>
+                        <span class="stats-label">ノーミスクリア</span>
+                        <span id="stats-perfect" class="stats-value">0</span>
+                    </div>
+                    <div class="stats-card">
+                        <i class="fas fa-fire highlight"></i>
+                        <span class="stats-label">最高連勝</span>
+                        <span id="stats-streak" class="stats-value">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="difficulty-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>難易度を選択</h2>
+                <div class="difficulty-options">
+                    <button class="diff-option" data-level="easy">初級</button>
+                    <button class="diff-option" data-level="medium">中級</button>
+                    <button class="diff-option" data-level="hard">上級</button>
+                </div>
+            </div>
+        </div>
+
         <div id="message-overlay" class="overlay hidden">
             <div class="message-box">
-                <h2 id="message-title">おめでとうございます！</h2>
-                <p id="message-text">素晴らしいです。もう一度遊びますか？</p>
-                <button id="restart-btn" class="primary-btn">次へ進む</button>
+                <h2 id="message-title">素晴らしい！</h2>
+                <p id="message-text">おめでとうございます。もう一度遊びますか？</p>
+                <div class="overlay-buttons">
+                    <button id="restart-btn" class="primary-btn">次へ進む</button>
+                    <button class="close-overlay-btn secondary-btn">閉じる</button>
+                </div>
             </div>
         </div>
     </div>

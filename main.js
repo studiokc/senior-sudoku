@@ -3,30 +3,78 @@ class SudokuGame {
         this.grid = Array(81).fill(0);
         this.solution = Array(81).fill(0);
         this.initialGrid = Array(81).fill(0);
+        this.memos = Array(81).fill(0).map(() => Array(10).fill(false)); // 1-9
+
         this.selectedIndex = -1;
         this.history = [];
         this.timer = 0;
         this.timerInterval = null;
 
+        this.isMemoMode = false;
+        this.difficulty = 'easy'; // easy, medium, hard
+        this.mistakes = 0;
+        this.maxMistakes = 3;
+        this.score = 0;
+
+        this.stats = this.loadStats();
         this.init();
     }
 
     init() {
+        this.setupEventListeners();
+        this.startNewGame();
+    }
+
+    loadStats() {
+        const saved = localStorage.getItem('sudoku_stats');
+        return saved ? JSON.parse(saved) : {
+            cleared: 0,
+            bestScore: 0,
+            perfectGames: 0,
+            streak: 0,
+            currentStreak: 0
+        };
+    }
+
+    saveStats() {
+        localStorage.setItem('sudoku_stats', JSON.stringify(this.stats));
+    }
+
+    updateStatsDisplay() {
+        document.getElementById('stats-cleared').innerText = this.stats.cleared;
+        document.getElementById('stats-best-score').innerText = this.stats.bestScore;
+        document.getElementById('stats-perfect').innerText = this.stats.perfectGames;
+        document.getElementById('stats-streak').innerText = this.stats.streak;
+    }
+
+    startNewGame() {
+        this.grid = Array(81).fill(0);
+        this.solution = Array(81).fill(0);
+        this.memos = Array(81).fill(0).map(() => Array(10).fill(false));
+        this.mistakes = 0;
+        this.score = 0;
+        document.getElementById('mistakes-display').innerText = `0/${this.maxMistakes}`;
+        document.getElementById('score-display').innerText = '0';
+
         this.generatePuzzle();
         this.renderGrid();
-        this.setupEventListeners();
         this.startTimer();
+        this.selectCell(-1);
     }
 
     generatePuzzle() {
-        // 1. フル解答を作成（ランダム要素あり）
         this.solve(this.solution);
-
-        // 2. 問題を作成（難易度調整: 初級向けに空欄を少なめに）
         this.grid = [...this.solution];
         this.initialGrid = [...this.solution];
 
-        let attempts = 30; // 消すマスの数（高齢者向けに少なめに設定）
+        let removeCount = 30; // easy
+        if (this.difficulty === 'medium') removeCount = 45;
+        if (this.difficulty === 'hard') removeCount = 55;
+
+        document.getElementById('difficulty-display').innerText =
+            this.difficulty === 'easy' ? '初級' : (this.difficulty === 'medium' ? '中級' : '上級');
+
+        let attempts = removeCount;
         while (attempts > 0) {
             let index = Math.floor(Math.random() * 81);
             if (this.grid[index] !== 0) {
@@ -61,11 +109,8 @@ class SudokuGame {
         const boxCol = Math.floor(col / 3) * 3;
 
         for (let i = 0; i < 9; i++) {
-            // 行チェック
             if (grid[row * 9 + i] === num) return false;
-            // 列チェック
             if (grid[i * 9 + col] === num) return false;
-            // 3x3ボックスチェック
             const bIndex = (boxRow + Math.floor(i / 3)) * 9 + (boxCol + i % 3);
             if (grid[bIndex] === num) return false;
         }
@@ -79,12 +124,26 @@ class SudokuGame {
         for (let i = 0; i < 81; i++) {
             const cell = document.createElement('div');
             cell.classList.add('cell');
+
             if (this.initialGrid[i] !== 0) {
                 cell.innerText = this.initialGrid[i];
                 cell.classList.add('fixed');
             } else if (this.grid[i] !== 0) {
                 cell.innerText = this.grid[i];
                 cell.classList.add('user-value');
+                if (this.grid[i] !== this.solution[i]) cell.classList.add('error');
+            } else {
+                // Render Memos
+                const memoGrid = document.createElement('div');
+                memoGrid.classList.add('memo-grid');
+                for (let m = 1; m <= 9; m++) {
+                    const memoNum = document.createElement('span');
+                    memoNum.classList.add('memo-num');
+                    memoNum.innerText = m;
+                    if (this.memos[i][m]) memoNum.classList.add('visible');
+                    memoGrid.appendChild(memoNum);
+                }
+                cell.appendChild(memoGrid);
             }
 
             cell.addEventListener('click', () => this.selectCell(i));
@@ -101,7 +160,6 @@ class SudokuGame {
 
         cells[index].classList.add('selected');
 
-        // ハイライト（同じ数字のマスを強調）
         const val = this.grid[index];
         if (val !== 0) {
             cells.forEach((c, i) => {
@@ -113,44 +171,78 @@ class SudokuGame {
     handleInput(value) {
         if (this.selectedIndex === -1 || this.initialGrid[this.selectedIndex] !== 0) return;
 
-        // 履歴を保存
-        this.history.push([...this.grid]);
-        if (this.history.length > 20) this.history.shift();
+        if (this.isMemoMode) {
+            this.memos[this.selectedIndex][value] = !this.memos[this.selectedIndex][value];
+            this.renderGrid();
+            this.selectCell(this.selectedIndex);
+            return;
+        }
 
+        if (this.grid[this.selectedIndex] === value) return;
+
+        this.history.push({ grid: [...this.grid], memos: this.memos.map(m => [...m]) });
         this.grid[this.selectedIndex] = value;
+
+        // Check if correct
+        if (value !== this.solution[this.selectedIndex]) {
+            this.mistakes++;
+            document.getElementById('mistakes-display').innerText = `${this.mistakes}/${this.maxMistakes}`;
+            if (this.mistakes >= this.maxMistakes) {
+                this.gameOver();
+            }
+        } else {
+            this.score += 10;
+            document.getElementById('score-display').innerText = this.score;
+            // Clear memos for this cell and related row/col/box if correct? 
+            // (Common in modern apps)
+        }
+
         this.renderGrid();
         this.selectCell(this.selectedIndex);
 
         if (this.checkWin()) {
-            this.showWinMessage();
-        }
-    }
-
-    undo() {
-        if (this.history.length > 0) {
-            this.grid = this.history.pop();
-            this.renderGrid();
-            this.selectCell(-1);
+            this.handleWin();
         }
     }
 
     checkWin() {
-        if (this.grid.includes(0)) return false;
         for (let i = 0; i < 81; i++) {
-            const temp = this.grid[i];
-            this.grid[i] = 0;
-            if (!this.isValid(this.grid, i, temp)) {
-                this.grid[i] = temp;
-                return false;
-            }
-            this.grid[i] = temp;
+            if (this.grid[i] !== this.solution[i]) return false;
         }
         return true;
     }
 
-    showWinMessage() {
+    handleWin() {
         clearInterval(this.timerInterval);
+        this.stats.cleared++;
+        this.stats.bestScore = Math.max(this.stats.bestScore, this.score);
+        if (this.mistakes === 0) this.stats.perfectGames++;
+        this.stats.currentStreak++;
+        this.stats.streak = Math.max(this.stats.streak, this.stats.currentStreak);
+        this.saveStats();
+
+        document.getElementById('message-title').innerText = "素晴らしい！";
+        document.getElementById('message-text').innerText = `スコア: ${this.score} | タイム: ${document.getElementById('timer').innerText}`;
         document.getElementById('message-overlay').classList.remove('hidden');
+    }
+
+    gameOver() {
+        clearInterval(this.timerInterval);
+        this.stats.currentStreak = 0;
+        this.saveStats();
+        document.getElementById('message-title').innerText = "ゲームオーバー";
+        document.getElementById('message-text').innerText = "3回ミスしました。もう一度挑戦しますか？";
+        document.getElementById('message-overlay').classList.remove('hidden');
+    }
+
+    undo() {
+        if (this.history.length > 0) {
+            const lastState = this.history.pop();
+            this.grid = lastState.grid;
+            this.memos = lastState.memos;
+            this.renderGrid();
+            this.selectCell(-1);
+        }
     }
 
     startTimer() {
@@ -165,35 +257,65 @@ class SudokuGame {
     }
 
     setupEventListeners() {
-        // 数字ボタン
+        // Clear previous listeners if re-init (though this doesn't fully clear anonymous ones, it's fine for simple app)
+
+        // Input Numbers
         document.querySelectorAll('.num-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.handleInput(parseInt(btn.dataset.value));
-            });
+            btn.addEventListener('click', () => this.handleInput(parseInt(btn.dataset.value)));
         });
 
-        // 戻るボタン
+        // Tools
         document.getElementById('undo-btn').addEventListener('click', () => this.undo());
-
-        // 新規ゲーム
-        document.getElementById('new-game-btn').addEventListener('click', () => {
-            this.grid = Array(81).fill(0);
-            this.solution = Array(81).fill(0);
-            this.history = [];
-            this.init();
+        document.getElementById('erase-btn').addEventListener('click', () => {
+            if (this.selectedIndex !== -1 && this.initialGrid[this.selectedIndex] === 0) {
+                this.grid[this.selectedIndex] = 0;
+                this.memos[this.selectedIndex] = Array(10).fill(false);
+                this.renderGrid();
+                this.selectCell(this.selectedIndex);
+            }
         });
-
-        // リスタート（オーバーレイ）
-        document.getElementById('restart-btn').addEventListener('click', () => {
-            document.getElementById('message-overlay').classList.add('hidden');
-            document.getElementById('new-game-btn').click();
+        document.getElementById('memo-btn').addEventListener('click', () => {
+            this.isMemoMode = !this.isMemoMode;
+            document.getElementById('memo-btn').classList.toggle('active');
+            document.getElementById('memo-status').innerText = this.isMemoMode ? 'ON' : 'OFF';
         });
-
-        // ヒント
         document.getElementById('hint-btn').addEventListener('click', () => {
             if (this.selectedIndex !== -1 && this.initialGrid[this.selectedIndex] === 0) {
                 this.handleInput(this.solution[this.selectedIndex]);
             }
+        });
+
+        // New Game / Modals
+        document.getElementById('new-game-btn').addEventListener('click', () => {
+            document.getElementById('difficulty-modal').classList.remove('hidden');
+        });
+
+        document.querySelectorAll('.diff-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.difficulty = btn.dataset.level;
+                document.getElementById('difficulty-modal').classList.add('hidden');
+                this.startNewGame();
+            });
+        });
+
+        document.getElementById('stats-open-btn').addEventListener('click', () => {
+            this.updateStatsDisplay();
+            document.getElementById('stats-modal').classList.remove('hidden');
+        });
+
+        document.querySelectorAll('.close-btn, .close-overlay-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.target.closest('.modal, .overlay').classList.add('hidden');
+            });
+        });
+
+        document.getElementById('settings-btn').addEventListener('click', () => {
+            alert('設定機能は開発中です。');
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            document.getElementById('message-overlay').classList.add('hidden');
+            this.startNewGame();
         });
     }
 }
